@@ -7,7 +7,8 @@
     "build:react": "vite build",
     "build:electron": "tsc electron/main.ts --outDir dist",
     "build": "npm run build:react && npm run build:electron",
-    "dist": "npm run build && electron-builder"
+    "dist": "npm run build && electron-builder",
+    "dist:linux": "npm run build && electron-builder --linux"
   },
   "build": {
     "appId": "com.minidiscord",
@@ -21,7 +22,16 @@
     "win": {
       "target": "nsis",
       "icon": "icon.ico"
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "category": "Network",
+      "icon": "icon.png"
     }
+  },
+  "author": {
+    "name": "Vpopulaz",
+    "email": "glebshalimovru@gmail.com"
   },
   "dependencies": {
     "@emoji-mart/data": "^1.2.1",
