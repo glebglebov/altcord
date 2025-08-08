@@ -1,17 +1,16 @@
-import React, { useState } from 'react';
-import LoginPage from './components/LoginPage';
-import MainLayout from './components/MainLayout';
+import React, { useState } from "react";
+import LoginPage from "./components/LoginPage";
+import MainLayout from "./components/MainLayout";
+import { UserModel } from "./types";
 
-export default function App() {
-  const [username, setUsername] = useState<string>('');
+function App() {
+  const [user, setUser] = useState<UserModel | null>(null);
 
-  return (
-    <>
-      {!username ? (
-        <LoginPage onSubmit={setUsername} />
-      ) : (
-        <MainLayout username={username} />
-      )}
-    </>
-  );
+  if (!user) {
+    return <LoginPage onLogin={setUser} />;
+  }
+
+  return <MainLayout user={user} />;
 }
+
+export default App;

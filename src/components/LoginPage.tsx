@@ -1,35 +1,32 @@
-import React, { useState } from 'react';
+import React from "react";
+import { useLogin } from "../hooks/useLogin";
+import { UserModel } from "../types";
 
 interface Props {
-  onSubmit: (username: string) => void;
+  onLogin: (user: UserModel) => void;
 }
 
-export default function LoginPage({ onSubmit }: Props) {
-  const [tempName, setTempName] = useState('');
-
-  function handleSubmit() {
-    if (tempName.trim()) {
-      onSubmit(tempName.trim());
-    }
-  }
+export default function LoginPage({ onLogin }: Props) {
+  const { username, setUsername, login, loading } = useLogin(onLogin);
 
   return (
-    <div className="flex items-center justify-center h-screen bg-zinc-900 text-white">
-      <div className="bg-zinc-800 p-6 rounded shadow-lg w-full max-w-sm">
-        <h2 className="text-xl font-semibold mb-4">Enter your name</h2>
+    <div className="flex h-screen items-center justify-center bg-zinc-900 text-white">
+      <div className="space-y-4">
+        <h1 className="text-xl font-bold">Введите имя пользователя</h1>
         <input
           type="text"
-          className="w-full p-2 rounded bg-zinc-700 text-white outline-none"
-          placeholder="Username"
-          value={tempName}
-          onChange={(e) => setTempName(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+          className="p-2 rounded bg-zinc-800 text-white w-64"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && login()}
+          disabled={loading}
         />
         <button
-          className="mt-4 w-full bg-indigo-600 hover:bg-indigo-500 transition rounded py-2"
-          onClick={handleSubmit}
+          onClick={login}
+          disabled={loading}
+          className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded"
         >
-          Continue
+          {loading ? "Входим..." : "Войти"}
         </button>
       </div>
     </div>

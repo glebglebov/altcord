@@ -14,10 +14,10 @@ import {
 } from "../types";
 
 interface Props {
-  username: string;
+  user: UserModel; // текущий авторизованный пользователь (с id)
 }
 
-export default function MainLayout({ username }: Props) {
+export default function MainLayout({ user }: Props) {
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [voiceUsers, setVoiceUsers] = useState<UserModel[]>([]);
 
@@ -26,40 +26,41 @@ export default function MainLayout({ username }: Props) {
   const [messages, setMessages] = useState<ChatMessageModel[]>([]);
   const [users, setUsers] = useState<RightSidebarUserModel[]>([]);
 
-  const currentUser = users.find(u => u.user.username === username)?.user;
+  useVoiceChat(voiceEnabled, user.username);
 
-  useVoiceChat(voiceEnabled, username);
-
-  // Подключение к SignalR-хабу и получение обновлений
+  // Подключение к общему SignalR-хабу и получение обновлений приложения
   useGlobalHub({
-    currentUsername: username,
+    currentUserId: user.id,
 
     onNewMessage: (msg) => {
-      setMessages(prev => [...prev, msg]);
+      setMessages((prev) => [...prev, msg]);
     },
 
-    onUserOnline: (user) => {
-      setUsers(prev => {
-        const filtered = prev.filter(u => u.user.username !== user.user.username);
-        return [...filtered, user];
+    onUserOnline: (u) => {
+      // Заменяем (или добавляем) запись о пользователе по его id
+      setUsers((prev) => {
+        const filtered = prev.filter((x) => x.user.id !== u.user.id);
+        return [...filtered, u];
       });
     },
 
-    onUserOffline: (username) => {
-      setUsers(prev =>
-        prev.map(u =>
-          u.user.username === username ? { ...u, online: false } : u
-        )
+    onUserOffline: (userId) => {
+      // Помечаем оффлайн по id
+      setUsers((prev) =>
+        prev.map((x) => (x.user.id === userId ? { ...x, online: false } : x))
       );
     },
 
-    onVoiceJoin: (user) => {
-      setVoiceUsers(prev => [...prev, user]);
+    onVoiceJoin: (u) => {
+      setVoiceUsers((prev) => {
+        if (prev.some((x) => x.id === u.id)) return prev;
+        return [...prev, u];
+      });
     },
 
-    onVoiceLeave: (username) => {
-      setVoiceUsers(prev => prev.filter(u => u.username !== username));
-    }
+    onVoiceLeave: (userId) => {
+      setVoiceUsers((prev) => prev.filter((x) => x.id !== userId));
+    },
   });
 
   // Инициализация состояния после загрузки с сервера
@@ -71,14 +72,14 @@ export default function MainLayout({ username }: Props) {
     }
   }, [startupState]);
 
-  // Запрашиваем разрешение на нотификации
+  // Запрашиваем разрешение на системные уведомления
   useEffect(() => {
-    if (Notification.permission !== "granted") {
-      Notification.requestPermission();
+    if (typeof Notification !== "undefined" && Notification.permission !== "granted") {
+      Notification.requestPermission().catch(() => {});
     }
   }, []);
 
-  if (loading || !startupState || !currentUser) {
+  if (loading && !startupState) {
     return <div className="text-white p-4">Загрузка...</div>;
   }
 
@@ -92,7 +93,10 @@ export default function MainLayout({ username }: Props) {
       />
 
       <div className="flex-1 flex flex-col">
-        <ChatWindow currentUser={currentUser} messages={messages} />
+        <ChatWindow
+          currentUser={user}
+          messages={messages}
+        />
       </div>
 
       <RightSidebar users={users} />

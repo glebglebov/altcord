@@ -1,4 +1,5 @@
 export interface UserModel {
+  id: string;
   username: string;
   avatarUrl: string;
   color: string;

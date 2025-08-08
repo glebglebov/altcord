@@ -16,7 +16,7 @@ export function useChat(currentUser: UserModel) {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          user: currentUser,
+          userId: currentUser.id,
           text: input
         })
       });

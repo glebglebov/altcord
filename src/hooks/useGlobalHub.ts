@@ -4,7 +4,7 @@ import { HubConnection, HubConnectionBuilder } from "@microsoft/signalr";
 import { BASE_URL } from '../config';
 
 interface GlobalHubOptions {
-  currentUsername: string;
+  currentUserId: string;
 
   onNewMessage?: (msg: ChatMessageModel) => void;
   onUserOnline?: (user: RightSidebarUserModel) => void;
@@ -23,31 +23,29 @@ export function useGlobalHub(options: GlobalHubOptions) {
       .build();
 
     connection.on("newMessage", (msg: ChatMessageModel) => {
-      if (msg.user.username !== options.currentUsername) {
+      if (msg.user.id !== options.currentUserId) {
         new Audio("notification.wav").play().catch(() => {});
-
         if (Notification.permission === "granted") {
           new Notification(`${msg.user.username}: ${msg.text}`);
         }
       }
-
       options.onNewMessage?.(msg);
     });
 
-    connection.on("userOnline", (user: RightSidebarUserModel) => {
-      options.onUserOnline?.(user);
+    connection.on("userOnline", (u: RightSidebarUserModel) => {
+      options.onUserOnline?.(u);
     });
 
-    connection.on("userOffline", (username: string) => {
-      options.onUserOffline?.(username);
+    connection.on("userOffline", (userId: string) => {
+      options.onUserOffline?.(userId);
     });
 
-    connection.on("voiceUserJoined", (user: UserModel) => {
-      options.onVoiceJoin?.(user);
+    connection.on("voiceUserJoined", (u: UserModel) => {
+      options.onVoiceJoin?.(u);
     });
 
-    connection.on("voiceUserLeft", (username: string) => {
-      options.onVoiceLeave?.(username);
+    connection.on("voiceUserLeft", (userId: string) => {
+      options.onVoiceLeave?.(userId);
     });
 
     connection.start()
