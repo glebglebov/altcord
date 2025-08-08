@@ -4,8 +4,7 @@ import { BASE_URL } from '../config';
 
 export function useVoiceChat(
   enabled: boolean,
-  username: string,
-  setTalkingUsers: React.Dispatch<React.SetStateAction<Map<string, boolean>>>
+  username: string
 ) {
   const connections = useRef<Map<string, RTCPeerConnection>>(new Map());
   const connectionRef = useRef<any>(null);
@@ -50,27 +49,6 @@ export function useVoiceChat(
             const source = audioCtx.createMediaStreamSource(audioStream);
             const analyser = audioCtx.createAnalyser();
             source.connect(analyser);
-
-            const data = new Uint8Array(analyser.frequencyBinCount);
-
-            const updateVolume = () => {
-              analyser.getByteFrequencyData(data);
-              const avg = data.reduce((a, b) => a + b, 0) / data.length;
-
-              const isSpeaking = avg > 10;
-
-              if (remoteUsername) {
-                setTalkingUsers((prev: Map<string, boolean>) => {
-                  const updated = new Map(prev);
-                  updated.set(remoteUsername, isSpeaking);
-                  return updated;
-                });
-              }
-
-              requestAnimationFrame(updateVolume);
-            };
-
-            updateVolume();
           };
 
           connections.current.set(connectionId, pc);

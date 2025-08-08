@@ -1,98 +1,33 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { ChatMessage } from './ChatMessage';
-
-import { ChatMessageModel, UserModel } from '../types';
-
-import { HubConnectionBuilder, HubConnection } from '@microsoft/signalr';
-import Picker from '@emoji-mart/react';
-import data from '@emoji-mart/data';
-import { BASE_URL } from '../config';
-import { deserializeChatMessage } from '../utils';
+import React, { useRef, useEffect } from "react";
+import { useChat } from "../hooks/useChat";
+import { UserModel, ChatMessageModel } from "../types";
+import { ChatMessage } from "./ChatMessage";
+import Picker from "@emoji-mart/react";
+import data from "@emoji-mart/data";
 
 interface Props {
-  username: string;
+  currentUser: UserModel;
+  messages: ChatMessageModel[];
 }
 
-export default function ChatWindow({ username }: Props) {
-  const [messages, setMessages] = useState<ChatMessageModel[]>([]);
-  const [input, setInput] = useState('');
-  const [connection, setConnection] = useState<HubConnection | null>(null);
-  const [showEmoji, setShowEmoji] = useState(false);
+export default function ChatWindow({ currentUser, messages }: Props) {
+  const {
+    input,
+    setInput,
+    sendMessage,
+    showEmoji,
+    setShowEmoji
+  } = useChat(currentUser);
 
-  const emojiRef = useRef<HTMLDivElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    const newConnection = new HubConnectionBuilder()
-      .withUrl(`${BASE_URL}/hub`, {
-        withCredentials: false
-      })
-      .withAutomaticReconnect()
-      .build();
-
-    newConnection.start().then(() => {
-      console.log('Connected to SignalR');
-
-      newConnection.on('ReceiveMessage', (messageJson: any) => {
-        try {
-          const message = deserializeChatMessage(messageJson);
-          setMessages(prev => [...prev, message]);
-
-          if (message.user.username !== username) {
-            new Audio('notification.wav').play().catch(() => {});
-
-            if (Notification.permission === 'granted') {
-              new Notification(`New message from ${message.user.username}`, {
-                body: message.text,
-                silent: true
-              });
-            } else if (Notification.permission !== 'denied') {
-              Notification.requestPermission();
-            }
-          }
-        } catch (err) {
-          console.error("Invalid message structure:", err);
-        }
-
-        
-      });
-
-    }).catch(err => console.error('SignalR error:', err));
-
-    setConnection(newConnection);
-  }, []);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (emojiRef.current && !emojiRef.current.contains(event.target as Node)) {
-        setShowEmoji(false);
-      }
-    }
-
-    if (showEmoji) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showEmoji]);
-
-  function sendMessage() {
-    if (connection && input.trim() !== '') {
-      connection.invoke('SendMessage', username, input);
-      setInput('');
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
-  }
-
-  function addEmoji(e: any) {
-    setInput(prev => prev + e.native);
-  }
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+    <div className="flex-1 flex flex-col bg-zinc-900 p-4 overflow-hidden">
+      <div className="flex-1 space-y-4 overflow-y-auto">
         {messages.map((msg, i) => (
           <ChatMessage
             key={i}
@@ -103,47 +38,34 @@ export default function ChatWindow({ username }: Props) {
         ))}
         <div ref={messagesEndRef} />
       </div>
-      <div className="border-t border-zinc-700 p-3">
-        <div className="relative flex items-center bg-zinc-800 rounded w-full pr-20">
-          {/* Input */}
+
+      <div className="mt-4">
+        <div className="relative">
           <input
             type="text"
-            placeholder="Type your message..."
-            className="flex-1 bg-transparent text-white p-3 pl-5 pr-4 outline-none"
+            className="w-full p-2 rounded bg-zinc-700 text-white"
+            placeholder="Введите сообщение..."
             value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && sendMessage()}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && sendMessage()}
           />
-
-          {/* Container for buttons (positioned absolutely inside input) */}
-          <div className="absolute right-2 flex items-center gap-2">
-            {/* Emoji Button */}
-            <button
-              onClick={() => setShowEmoji(prev => !prev)}
-              className="text-xl"
-            >
-              😊
-            </button>
-
-            {/* Send Button (Arrow Icon) */}
-            <button
-              onClick={sendMessage}
-              className="text-white text-lg hover:text-indigo-400 transition"
-            >
-              ➤
-            </button>
-          </div>
-
-          {/* Emoji Picker (above input) */}
-          {showEmoji && (
-          <div
-            className="absolute bottom-full right-12 mb-2 z-20"
-            ref={emojiRef}
+          <button
+            className="absolute right-2 top-2 text-xl"
+            onClick={() => setShowEmoji(!showEmoji)}
           >
-            <Picker data={data} onEmojiSelect={addEmoji} theme="dark" />
+            😊
+          </button>
+        </div>
+
+        {showEmoji && (
+          <div className="mt-2">
+            <Picker
+              data={data}
+              onEmojiSelect={(e: any) => setInput((prev) => prev + e.native)}
+              theme="dark"
+            />
           </div>
         )}
-        </div>
       </div>
     </div>
   );
