@@ -1,59 +1,62 @@
-import { useEffect } from "react";
-import { ChatMessageModel, RightSidebarUserModel, UserModel } from "../types";
-import { HubConnection, HubConnectionBuilder } from "@microsoft/signalr";
-import { BASE_URL } from '../config';
+import { useEffect, useRef } from "react";
+import { HubConnectionBuilder } from "@microsoft/signalr";
+import { BASE_URL } from "../config";
+import { ChatMessageEvent, ChatMessageRawModel, UserModel } from "../types";
+import { useUsers } from "../store/users";
+import { useMessages } from "../store/messages";
+import { joinMessage } from "../utils/joinMessage";
 
-interface GlobalHubOptions {
-  currentUserId: string;
+export function useGlobalHub({ currentUserId }: { currentUserId: string }) {
+  const { state: usersById, upsertOne: upsertUser } = useUsers();
+  const { upsertOne: upsertMsg, removeOne: removeMsg } = useMessages();
 
-  onNewMessage?: (msg: ChatMessageModel) => void;
-  onUserOnline?: (user: RightSidebarUserModel) => void;
-  onUserOffline?: (username: string) => void;
-  onVoiceJoin?: (user: UserModel) => void;
-  onVoiceLeave?: (username: string) => void;
-}
-
-export function useGlobalHub(options: GlobalHubOptions) {
   useEffect(() => {
-    const connection: HubConnection = new HubConnectionBuilder()
+    const connection = new HubConnectionBuilder()
       .withUrl(`${BASE_URL}/hub/state`, {
         withCredentials: false
       })
       .withAutomaticReconnect()
       .build();
 
-    connection.on("newMessage", (msg: ChatMessageModel) => {
-      if (msg.user.id !== options.currentUserId) {
+    connection.on("userUpdated", (user: UserModel) => {
+      upsertUser(user);
+    });
+
+    connection.on("messageEvent", (ev: ChatMessageEvent) => {
+      if (ev.type === "deleted") {
+        removeMsg(ev.id);
+        return;
+      }
+
+      const payload = ev.payload as ChatMessageRawModel;
+      const model = joinMessage(payload, (id) => usersById[id]);
+
+      if (!model) {
+        return;
+      }
+
+      if (ev.type === "created" && model.user.id !== currentUserId) {
         new Audio("notification.wav").play().catch(() => {});
-        if (Notification.permission === "granted") {
-          new Notification(`${msg.user.username}: ${msg.text}`);
+        if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+          new Notification(`${model.user.username}: ${model.text}`);
         }
       }
-      options.onNewMessage?.(msg);
-    });
 
-    connection.on("userOnline", (u: RightSidebarUserModel) => {
-      options.onUserOnline?.(u);
-    });
-
-    connection.on("userOffline", (userId: string) => {
-      options.onUserOffline?.(userId);
-    });
-
-    connection.on("voiceUserJoined", (u: UserModel) => {
-      options.onVoiceJoin?.(u);
-    });
-
-    connection.on("voiceUserLeft", (userId: string) => {
-      options.onVoiceLeave?.(userId);
+      upsertMsg(model);
     });
 
     connection.start()
-      .then(() => console.log("Connected to /hub/state"))
+      .then(async () => {
+        await connection.invoke("Register", currentUserId);
+        const t = setInterval(() => connection.invoke("Heartbeat", currentUserId).catch(() => {}), 15000);
+        (window as any).__hubHeartbeat = t;
+      })
       .catch(console.error);
 
     return () => {
+      const t = (window as any).__hubHeartbeat;
+      if (t) clearInterval(t);
       connection.stop();
     };
-  }, []);
+  }, [currentUserId, usersById, upsertUser, upsertMsg, removeMsg]);
 }

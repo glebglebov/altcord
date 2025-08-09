@@ -1,4 +1,4 @@
-import { ChatMessageModel } from './types';
+import { ChatMessageModel } from '../types';
 
 export function deserializeChatMessage(obj: any): ChatMessageModel {
   if (

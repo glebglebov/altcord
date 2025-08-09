@@ -1,16 +1,18 @@
 import React, { useState } from "react";
 import LoginPage from "./components/LoginPage";
 import MainLayout from "./components/MainLayout";
+import { UsersProvider } from "./store/users";
+import { MessagesProvider } from "./store/messages";
 import { UserModel } from "./types";
 
-function App() {
+export default function App() {
   const [user, setUser] = useState<UserModel | null>(null);
 
-  if (!user) {
-    return <LoginPage onLogin={setUser} />;
-  }
-
-  return <MainLayout user={user} />;
+  return (
+    <UsersProvider>
+      <MessagesProvider>
+        {!user ? <LoginPage onLogin={setUser} /> : <MainLayout user={user} />}
+      </MessagesProvider>
+    </UsersProvider>
+  );
 }
-
-export default App;
