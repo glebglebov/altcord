@@ -10,12 +10,6 @@ export interface UserModel {
   isOnline: boolean;
 }
 
-export interface ChatMessageEvent {
-  id: string;
-  type: string;
-  payload: any | null;
-}
-
 export interface ChatMessageRawModel {
   id: string;
   userId: string;
@@ -27,11 +21,26 @@ export interface ChatMessageModel {
   id: string;
   user: UserModel;
   text: string;
-  timestamp: string; // ISO 8601
+  date: Date;
 }
 
 export interface StartupStateModel {
   users: UserModel[];
   messages: ChatMessageRawModel[];
   voiceChannelUsers: UserModel[];
+}
+
+// global hub events
+
+export interface UserStatusChangedEvent {
+  userId: string;
+  isOnline: boolean;
+}
+
+export interface NewUserJoinedEvent {
+  user: UserModel;
+}
+
+export interface NewMessageSentEvent {
+  message: ChatMessageRawModel
 }

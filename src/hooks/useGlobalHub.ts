@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { HubConnection, HubConnectionBuilder } from "@microsoft/signalr";
 import { BASE_URL } from "../config";
-import { ChatMessageEvent, ChatMessageRawModel, UserModel } from "../types";
+import { NewMessageSentEvent, ChatMessageRawModel, NewUserJoinedEvent, UserStatusChangedEvent } from "../types";
 import { useUsers } from "../store/users";
 import { useMessages } from "../store/messages";
 import { joinMessage } from "../utils/joinMessage";
@@ -21,33 +21,44 @@ export function useGlobalHub({ currentUserId }: { currentUserId: string }) {
       .withAutomaticReconnect()
       .build();
 
-    const onUserUpdated = (user: UserModel) => {
+    const onNewUserJoined = (e: NewUserJoinedEvent) => {
+      upsertUser(e.user);
+    };
+
+    const onUserStatusChanged = (e: UserStatusChangedEvent) => {
+      const user = usersRef.current[e.userId];
+
+      if (!user) return;
+
+      user.isOnline = e.isOnline;
       upsertUser(user);
     };
 
-    const onMessageEvent = (ev: ChatMessageEvent) => {
-      if (ev.type === "deleted") {
-        removeMsg(ev.id);
-        return;
-      }
+    const onChatStateChanged = (e: any) => {
+      const onNewMessageSentEvent = (ev: NewMessageSentEvent) => {
+        const model = joinMessage(ev.message, id => usersRef.current[id]);
+        if (!model) return;
 
-      const payload = ev.payload as ChatMessageRawModel;
-      const model = joinMessage(payload, id => usersRef.current[id]);
-
-      if (!model) return;
-
-      if (ev.type === "created" && model.user.id !== currentUserId) {
-        new Audio("notification.wav").play().catch(() => {});
-        if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-          new Notification(`${model.user.username}: ${model.text}`);
+        if (model.user.id !== currentUserId) {
+          new Audio("notification.wav").play().catch(() => {});
+          if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+            new Notification(`${model.user.username}: ${model.text}`);
+          }
         }
+
+        upsertMsg(model);
+      };
+
+      switch (e.type) {
+        case "new":
+          onNewMessageSentEvent(e);
+          break;
       }
+    }
 
-      upsertMsg(model);
-    };
-
-    connection.on("userUpdated", onUserUpdated);
-    connection.on("messageEvent", onMessageEvent);
+    connection.on("newUserJoined", onNewUserJoined);
+    connection.on("userStatusChanged", onUserStatusChanged);
+    connection.on("chatStateChanged", onChatStateChanged);
 
     let hbId: number | null = null;
 
@@ -68,8 +79,9 @@ export function useGlobalHub({ currentUserId }: { currentUserId: string }) {
         hbId = null;
       }
       try {
-        connection.off("userUpdated", onUserUpdated);
-        connection.off("messageEvent", onMessageEvent);
+        connection.off("newUserJoined", onNewUserJoined);
+        connection.off("userStatusChanged", onUserStatusChanged);
+        connection.off("chatStateChanged", onChatStateChanged);
       } catch {}
       connection.stop().catch(() => {});
     };

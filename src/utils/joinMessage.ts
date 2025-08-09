@@ -18,7 +18,7 @@ export function joinMessage(
     id: m.id,
     user: author,
     text: m.text,
-    timestamp: m.timestamp
+    date: new Date(m.timestamp)
   };
 }
 

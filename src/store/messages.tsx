@@ -22,7 +22,7 @@ function reducer(state: MsgState, action: Action): MsgState {
       }
       const order = Array.from(orderSet);
       order.sort((a, b) =>
-        new Date(byId[a].timestamp).getTime() - new Date(byId[b].timestamp).getTime()
+        byId[a].date.getTime() - byId[b].date.getTime()
       );
       return { byId, order };
     }
@@ -32,7 +32,7 @@ function reducer(state: MsgState, action: Action): MsgState {
         ? state.order.slice()
         : [...state.order, action.message.id];
       order.sort((a, b) =>
-        new Date(byId[a].timestamp).getTime() - new Date(byId[b].timestamp).getTime()
+        byId[a].date.getTime() - byId[b].date.getTime()
       );
       return { byId, order };
     }
