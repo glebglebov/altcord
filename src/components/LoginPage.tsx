@@ -1,9 +1,8 @@
 import React from "react";
 import { useLogin } from "../hooks/useLogin";
-import { UserModel } from "../types";
 
 interface Props {
-  onLogin: (user: UserModel) => void;
+  onLogin: (userId: string) => void;
 }
 
 export default function LoginPage({ onLogin }: Props) {

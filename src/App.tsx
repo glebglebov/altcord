@@ -6,12 +6,12 @@ import { MessagesProvider } from "./store/messages";
 import { UserModel } from "./types";
 
 export default function App() {
-  const [user, setUser] = useState<UserModel | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
 
   return (
     <UsersProvider>
       <MessagesProvider>
-        {!user ? <LoginPage onLogin={setUser} /> : <MainLayout user={user} />}
+        {!userId ? <LoginPage onLogin={setUserId} /> : <MainLayout userId={userId} />}
       </MessagesProvider>
     </UsersProvider>
   );

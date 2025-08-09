@@ -1,19 +1,18 @@
 import React, { useEffect, useRef } from "react";
 import { useMessages } from "../store/messages";
 import { useChat } from "../hooks/useChat";
-import { UserModel } from "../types";
 import { ChatMessage } from "./ChatMessage";
 
 import Picker from "@emoji-mart/react";
 import data from "@emoji-mart/data";
 
 interface Props {
-  currentUser: UserModel;
+  userId: string;
 }
 
-export default function ChatWindow({ currentUser }: Props) {
+export default function ChatWindow({ userId }: Props) {
   const { list: messages } = useMessages();
-  const { input, setInput, sendMessage, showEmoji, setShowEmoji } = useChat(currentUser);
+  const { input, setInput, sendMessage, showEmoji, setShowEmoji } = useChat(userId);
   const endRef = useRef<HTMLDivElement>(null);
 
   // автоскролл в конец при появлении новых сообщений

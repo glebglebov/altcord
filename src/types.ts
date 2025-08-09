@@ -1,3 +1,7 @@
+export interface AuthResult {
+  id: string;
+}
+
 export interface UserModel {
   id: string;
   username: string;

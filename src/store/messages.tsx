@@ -1,5 +1,4 @@
-// src/store/messages.tsx
-import React, { createContext, useContext, useMemo, useReducer } from "react";
+import React, { createContext, useContext, useMemo, useReducer, useCallback } from "react";
 import { ChatMessageModel } from "../types";
 
 type MsgState = {
@@ -16,21 +15,21 @@ function reducer(state: MsgState, action: Action): MsgState {
   switch (action.type) {
     case "UPSERT_MANY": {
       const byId = { ...state.byId };
-      const order = new Set(state.order);
+      const orderSet = new Set(state.order);
       for (const m of action.messages) {
         byId[m.id] = m;
-        order.add(m.id);
+        orderSet.add(m.id);
       }
-      const ord = Array.from(order);
-      ord.sort((a, b) =>
+      const order = Array.from(orderSet);
+      order.sort((a, b) =>
         new Date(byId[a].timestamp).getTime() - new Date(byId[b].timestamp).getTime()
       );
-      return { byId, order: ord };
+      return { byId, order };
     }
     case "UPSERT_ONE": {
       const byId = { ...state.byId, [action.message.id]: action.message };
       const order = state.order.includes(action.message.id)
-        ? [...state.order]
+        ? state.order.slice()
         : [...state.order, action.message.id];
       order.sort((a, b) =>
         new Date(byId[a].timestamp).getTime() - new Date(byId[b].timestamp).getTime()
@@ -58,16 +57,29 @@ const MessagesContext = createContext<{
 
 export const MessagesProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
   const [state, dispatch] = useReducer(reducer, { byId: {}, order: [] });
-  const value = useMemo(() => {
-    const list = state.order.map(id => state.byId[id]).filter(Boolean);
-    return {
-      state,
-      upsertMany: (messages: ChatMessageModel[]) => dispatch({ type: "UPSERT_MANY", messages }),
-      upsertOne: (message: ChatMessageModel) => dispatch({ type: "UPSERT_ONE", message }),
-      removeOne: (id: string) => dispatch({ type: "REMOVE_ONE", id }),
-      list
-    };
-  }, [state]);
+
+  const upsertMany = useCallback((messages: ChatMessageModel[]) => {
+    dispatch({ type: "UPSERT_MANY", messages });
+  }, []);
+
+  const upsertOne = useCallback((message: ChatMessageModel) => {
+    dispatch({ type: "UPSERT_ONE", message });
+  }, []);
+
+  const removeOne = useCallback((id: string) => {
+    dispatch({ type: "REMOVE_ONE", id });
+  }, []);
+
+  const list = useMemo(
+    () => state.order.map((id) => state.byId[id]).filter(Boolean),
+    [state.order, state.byId]
+  );
+
+  const value = useMemo(
+    () => ({ state, upsertMany, upsertOne, removeOne, list }),
+    [state, upsertMany, upsertOne, removeOne, list]
+  );
+
   return <MessagesContext.Provider value={value}>{children}</MessagesContext.Provider>;
 };
 

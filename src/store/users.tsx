@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useMemo, useReducer } from "react";
+import React, { createContext, useContext, useMemo, useReducer, useCallback } from "react";
 import { UserModel } from "../types";
 
 type UsersState = Record<string, UserModel>;
@@ -25,21 +25,32 @@ const UsersContext = createContext<{
   state: UsersState;
   upsertOne: (u: UserModel) => void;
   upsertMany: (u: UserModel[]) => void;
+  list: UserModel[];
 } | null>(null);
 
 export const UsersProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
   const [state, dispatch] = useReducer(reducer, {});
-  const value = useMemo(() => ({
-    state,
-    upsertOne: (user: UserModel) => dispatch({ type: "UPSERT_ONE", user }),
-    upsertMany: (users: UserModel[]) => dispatch({ type: "UPSERT_MANY", users }),
-  }), [state]);
+
+  const upsertOne = useCallback((user: UserModel) => {
+    dispatch({ type: "UPSERT_ONE", user });
+  }, []);
+
+  const upsertMany = useCallback((users: UserModel[]) => {
+    dispatch({ type: "UPSERT_MANY", users });
+  }, []);
+
+  const list = useMemo(() => Object.values(state), [state]);
+
+  const value = useMemo(
+    () => ({ state, upsertOne, upsertMany, list }),
+    [state, upsertOne, upsertMany, list]
+  );
+
   return <UsersContext.Provider value={value}>{children}</UsersContext.Provider>;
 };
 
 export function useUsers() {
   const ctx = useContext(UsersContext);
   if (!ctx) throw new Error("useUsers must be used within UsersProvider");
-  const list = useMemo(() => Object.values(ctx.state), [ctx.state]);
-  return { ...ctx, list };
+  return ctx;
 }

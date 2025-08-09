@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { UserModel } from "../types";
+import { AuthResult } from "../types";
 import { BASE_URL } from "../config";
 
-export function useLogin(onSuccess: (user: UserModel) => void) {
+export function useLogin(onSuccess: (userId: string) => void) {
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -19,8 +19,8 @@ export function useLogin(onSuccess: (user: UserModel) => void) {
 
       if (!res.ok) throw new Error("Ошибка авторизации");
 
-      const user: UserModel = await res.json();
-      onSuccess(user);
+      const result: AuthResult = await res.json();
+      onSuccess(result.id);
     } catch (err) {
       alert("Не удалось войти");
       console.error(err);

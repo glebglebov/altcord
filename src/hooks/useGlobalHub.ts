@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { HubConnectionBuilder } from "@microsoft/signalr";
+import { HubConnection, HubConnectionBuilder } from "@microsoft/signalr";
 import { BASE_URL } from "../config";
 import { ChatMessageEvent, ChatMessageRawModel, UserModel } from "../types";
 import { useUsers } from "../store/users";
@@ -10,30 +10,31 @@ export function useGlobalHub({ currentUserId }: { currentUserId: string }) {
   const { state: usersById, upsertOne: upsertUser } = useUsers();
   const { upsertOne: upsertMsg, removeOne: removeMsg } = useMessages();
 
+  const usersRef = useRef(usersById);
+  useEffect(() => { usersRef.current = usersById; }, [usersById]);
+
   useEffect(() => {
-    const connection = new HubConnectionBuilder()
-      .withUrl(`${BASE_URL}/hub/state`, {
-        withCredentials: false
-      })
+    let disposed = false;
+
+    const connection: HubConnection = new HubConnectionBuilder()
+      .withUrl(`${BASE_URL}/hub/state`, { withCredentials: false })
       .withAutomaticReconnect()
       .build();
 
-    connection.on("userUpdated", (user: UserModel) => {
+    const onUserUpdated = (user: UserModel) => {
       upsertUser(user);
-    });
+    };
 
-    connection.on("messageEvent", (ev: ChatMessageEvent) => {
+    const onMessageEvent = (ev: ChatMessageEvent) => {
       if (ev.type === "deleted") {
         removeMsg(ev.id);
         return;
       }
 
       const payload = ev.payload as ChatMessageRawModel;
-      const model = joinMessage(payload, (id) => usersById[id]);
+      const model = joinMessage(payload, id => usersRef.current[id]);
 
-      if (!model) {
-        return;
-      }
+      if (!model) return;
 
       if (ev.type === "created" && model.user.id !== currentUserId) {
         new Audio("notification.wav").play().catch(() => {});
@@ -43,20 +44,34 @@ export function useGlobalHub({ currentUserId }: { currentUserId: string }) {
       }
 
       upsertMsg(model);
-    });
+    };
 
-    connection.start()
+    connection.on("userUpdated", onUserUpdated);
+    connection.on("messageEvent", onMessageEvent);
+
+    let hbId: number | null = null;
+
+    connection
+      .start()
       .then(async () => {
-        await connection.invoke("Register", currentUserId);
-        const t = setInterval(() => connection.invoke("Heartbeat", currentUserId).catch(() => {}), 15000);
-        (window as any).__hubHeartbeat = t;
+        if (disposed) return;
+        hbId = window.setInterval(() => {
+          connection.invoke("Heartbeat", currentUserId).catch(() => {});
+        }, 3000);
       })
       .catch(console.error);
 
     return () => {
-      const t = (window as any).__hubHeartbeat;
-      if (t) clearInterval(t);
-      connection.stop();
+      disposed = true;
+      if (hbId) {
+        clearInterval(hbId);
+        hbId = null;
+      }
+      try {
+        connection.off("userUpdated", onUserUpdated);
+        connection.off("messageEvent", onMessageEvent);
+      } catch {}
+      connection.stop().catch(() => {});
     };
-  }, [currentUserId, usersById, upsertUser, upsertMsg, removeMsg]);
+  }, [currentUserId]);
 }

@@ -10,20 +10,20 @@ import { useGlobalHub } from "../hooks/useGlobalHub";
 import { UserModel } from "../types";
 
 interface Props {
-  user: UserModel;
+  userId: string;
 }
 
-export default function MainLayout({ user }: Props) {
+export default function MainLayout({ userId }: Props) {
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [voiceUsers, setVoiceUsers] = useState<UserModel[]>([]);
 
-  useVoiceChat(voiceEnabled, user.username);
+  useVoiceChat(voiceEnabled, userId);
 
-  // Стартовое состояние заселяет сторы (users/messages) + возвращает voiceChannelUsers
+  // Стартовое состояние (users/messages) + возвращает voiceChannelUsers
   const { state: startupState, loading } = useStartupState();
 
-  // Хаб: регистрируемся, слушаем userUpdated/messageEvent, делаем heartbeat
-  useGlobalHub({ currentUserId: user.id });
+  // Хаб: регистрируемся, слушаем события, heartbeat
+  useGlobalHub({ currentUserId: userId });
 
   // Применяем voice список со старта
   useEffect(() => {
@@ -53,7 +53,7 @@ export default function MainLayout({ user }: Props) {
       />
 
       <div className="flex-1 flex flex-col">
-        <ChatWindow currentUser={user} />
+        <ChatWindow userId={userId} />
       </div>
 
       <RightSidebar />

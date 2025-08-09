@@ -2,7 +2,7 @@ import { useState } from "react";
 import { UserModel } from "../types";
 import { BASE_URL } from '../config';
 
-export function useChat(currentUser: UserModel) {
+export function useChat(userId: string) {
   const [input, setInput] = useState("");
   const [showEmoji, setShowEmoji] = useState(false);
 
@@ -16,7 +16,7 @@ export function useChat(currentUser: UserModel) {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          userId: currentUser.id,
+          userId: userId,
           text: input
         })
       });
