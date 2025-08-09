@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { useMessages } from "../store/messages";
 import { useChat } from "../hooks/useChat";
+import { useTypingIndicator } from "../hooks/useTypingIndicator";
 import { ChatMessage } from "./ChatMessage";
 
 import Picker from "@emoji-mart/react";
@@ -8,11 +9,14 @@ import data from "@emoji-mart/data";
 
 interface Props {
   userId: string;
+  sendTyping?: () => void;
 }
 
-export default function ChatWindow({ userId }: Props) {
+export default function ChatWindow({ userId, sendTyping }: Props) {
   const { list: messages } = useMessages();
-  const { input, setInput, sendMessage, showEmoji, setShowEmoji } = useChat(userId);
+  const { input, setInput, sendMessage, showEmoji, setShowEmoji } = useChat(userId, { sendTyping, typingThrottleMs: 1200 });
+
+  const { hasTyping, label } = useTypingIndicator(userId);
 
   const endRef = useRef<HTMLDivElement>(null);
   const emojiBtnRef = useRef<HTMLButtonElement>(null);
@@ -38,6 +42,10 @@ export default function ChatWindow({ userId }: Props) {
         ))}
         <div ref={endRef} />
       </div>
+
+      {hasTyping && (
+        <div className="mb-2 text-xs text-zinc-400">{label}</div>
+      )}
 
       <div className="mt-4">
         <div className="relative">
@@ -66,7 +74,7 @@ export default function ChatWindow({ userId }: Props) {
               <Picker
                 data={data}
                 theme="dark"
-                onEmojiSelect={(e: any) => setInput((prev) => prev + (e?.native ?? ""))}
+                onEmojiSelect={(e: any) => setInput(input + (e?.native ?? ""))}
                 onClickOutside={() => setShowEmoji(false)}
               />
             </div>

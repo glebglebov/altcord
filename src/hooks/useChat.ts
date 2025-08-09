@@ -1,10 +1,22 @@
-import { useState } from "react";
-import { UserModel } from "../types";
+import { useRef, useState } from "react";
 import { BASE_URL } from '../config';
 
-export function useChat(userId: string) {
+export function useChat(userId: string, opts?: { sendTyping?: () => void; typingThrottleMs?: number }) {
   const [input, setInput] = useState("");
   const [showEmoji, setShowEmoji] = useState(false);
+
+  const lastTypingRef = useRef(0);
+
+  const throttle = opts?.typingThrottleMs ?? 1500;
+
+  function onChange(next: string) {
+    setInput(next);
+    const now = Date.now();
+    if (opts?.sendTyping && now - lastTypingRef.current > throttle) {
+      lastTypingRef.current = now;
+      opts.sendTyping();
+    }
+  }
 
   async function sendMessage() {
     if (!input.trim()) return;
@@ -31,11 +43,5 @@ export function useChat(userId: string) {
     }
   }
 
-  return {
-    input,
-    setInput,
-    sendMessage,
-    showEmoji,
-    setShowEmoji
-  };
+  return { input, setInput: onChange, sendMessage, showEmoji, setShowEmoji };
 }

@@ -13,6 +13,8 @@ export function useGlobalHub({ currentUserId }: { currentUserId: string }) {
   const usersRef = useRef(usersById);
   useEffect(() => { usersRef.current = usersById; }, [usersById]);
 
+  const connectionRef = useRef<HubConnection | null>(null);
+
   useEffect(() => {
     let disposed = false;
 
@@ -20,6 +22,8 @@ export function useGlobalHub({ currentUserId }: { currentUserId: string }) {
       .withUrl(`${BASE_URL}/hub/state`, { withCredentials: false })
       .withAutomaticReconnect()
       .build();
+
+    connectionRef.current = connection;
 
     const onNewUserJoined = (e: NewUserJoinedEvent) => {
       upsertUser(e.user);
@@ -56,9 +60,14 @@ export function useGlobalHub({ currentUserId }: { currentUserId: string }) {
       }
     }
 
+    const onTyping = ({ userId }: { userId: string }) => {
+      window.dispatchEvent(new CustomEvent("ac:typing", { detail: { userId, at: Date.now() } }));
+    };
+
     connection.on("newUserJoined", onNewUserJoined);
     connection.on("userStatusChanged", onUserStatusChanged);
     connection.on("chatStateChanged", onChatStateChanged);
+    connection.on("typing", onTyping);
 
     let hbId: number | null = null;
 
@@ -82,8 +91,17 @@ export function useGlobalHub({ currentUserId }: { currentUserId: string }) {
         connection.off("newUserJoined", onNewUserJoined);
         connection.off("userStatusChanged", onUserStatusChanged);
         connection.off("chatStateChanged", onChatStateChanged);
+        connection.off("typing", onTyping);
       } catch {}
       connection.stop().catch(() => {});
+      connectionRef.current = null; 
     };
   }, [currentUserId]);
+
+  const sendTyping = () => {
+    const conn = connectionRef.current;
+    if (conn) conn.invoke("Typing", currentUserId).catch(() => {});
+  };
+
+  return { sendTyping };
 }

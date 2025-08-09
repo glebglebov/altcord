@@ -23,7 +23,7 @@ export default function MainLayout({ userId }: Props) {
   const { state: startupState, loading } = useStartupState();
 
   // Хаб: регистрируемся, слушаем события, heartbeat
-  useGlobalHub({ currentUserId: userId });
+  const hub = useGlobalHub({ currentUserId: userId });
 
   // Применяем voice список со старта
   useEffect(() => {
@@ -53,7 +53,7 @@ export default function MainLayout({ userId }: Props) {
       />
 
       <div className="flex-1 flex flex-col">
-        <ChatWindow userId={userId} />
+        <ChatWindow userId={userId} sendTyping={hub.sendTyping} />
       </div>
 
       <RightSidebar />
